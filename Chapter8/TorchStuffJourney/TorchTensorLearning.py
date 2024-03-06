@@ -50,3 +50,5 @@ tensor_B = torch.tensor([[7, 10],
                          [8, 11], 
                          [9, 12]], dtype=torch.float32)
 
+print(tensor_A.shape,tensor_B.shape,tensor_B.T.shape)
+print(torch.mm(tensor_A, tensor_B.T))
