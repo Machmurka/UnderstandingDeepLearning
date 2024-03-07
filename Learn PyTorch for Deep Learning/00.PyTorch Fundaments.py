@@ -1,4 +1,5 @@
 
+
 import torch
 
 
@@ -52,3 +53,19 @@ tensor_B = torch.tensor([[7, 10],
 
 print(tensor_A.shape,tensor_B.shape,tensor_B.T.shape)
 print(torch.mm(tensor_A, tensor_B.T))
+
+x= torch.arange(0,100,10)
+print(f"Minimum: {x.min()}, Maximuim: {x.max()}, Mean: {x.type(torch.float32).mean()}, Sum: {x.sum()}")
+print(f"Index where min val occurs {x.argmin()}, Index where max val occurs{x.argmax()}")
+
+x=torch.arange(0.,100.,10.)
+print(x.dtype)
+x_16=x.type(torch.float16)
+print(x_16.dtype)
+
+#tensor manipulation with rshape,stack,permute...
+
+x=torch.arange(1.,8.)
+print(x,x.shape)
+x_reshaped=x.reshape(1,7)
+print(x_reshaped, x_reshaped.shape)
