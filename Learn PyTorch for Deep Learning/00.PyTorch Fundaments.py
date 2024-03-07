@@ -89,3 +89,16 @@ print(f"tensor unsqueezed ^ it's shape {x_unsqueezed}{x_unsqueezed.shape}")
 x_original=torch.rand(size=(5,4,3))
 x_permutate=x_original.permute(2,0,1) #shift ax 0->1 1->2 2->0
 print(f"Original shape: \n {x_original} \n New shape \n {x_permutate}")
+
+x=torch.arange(1,10).reshape(1,3,3)
+#print(f"First square bracket \n {x[0]} \n Second square bracket \n {x[0][0]} \n Third square bracket \n {x[0][0][0]} ")
+print(x)
+print(f"get all values from 0th dimension and 0 index of 1st dimenstion {x[:, 0]}")
+print(f"get all values of 0th & 1st dimension but only index 1 of 2nd dimension {x[:, :, 1]}") 
+print(f"{x[:, 1, 1]}")
+print(f"Same as x[0][0]: {x[0,0,:]}")
+
+#numpy to torch
+import numpy as np
+array=np.arange(1.0,9.0)
+tensor_np=torch.from_numpy(array)
