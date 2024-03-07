@@ -69,3 +69,23 @@ x=torch.arange(1.,8.)
 print(x,x.shape)
 x_reshaped=x.reshape(1,7)
 print(x_reshaped, x_reshaped.shape)
+x_view=x.view(1,7)
+x_view[:, 0]=5
+print(f"Changing the view changes the original tensor too {x_view},{x}")
+
+#stacking tensors 
+x_stack=torch.stack([x,x,x,x],dim=0)
+x_stack1=torch.stack([x,x,x,x],dim=1)
+
+print(f"x stacked on dimention 0 :{x_stack}'\n X stacked on dimention 1'{x_stack1} stuff stacked vertically")
+
+#usign squeeze
+print(f"Previous tensor ^ it's shape {x_reshaped}{x_reshaped.shape}")
+x_squeezed= x_reshaped.squeeze()
+print(f"tensor squeezed ^ it's shape {x_squeezed}{x_squeezed.shape}")
+x_unsqueezed = x_squeezed.unsqueeze(dim=0)
+print(f"tensor unsqueezed ^ it's shape {x_unsqueezed}{x_unsqueezed.shape}")
+
+x_original=torch.rand(size=(5,4,3))
+x_permutate=x_original.permute(2,0,1) #shift ax 0->1 1->2 2->0
+print(f"Original shape: \n {x_original} \n New shape \n {x_permutate}")
