@@ -80,12 +80,14 @@ class LinearRegressionModel(nn.Module):
     def forward(self,x: torch.Tensor) ->torch.Tensor:
         return self.weights*x+self.bias
 
+    def Optimizer(self):
+        return torch.optim.SGD(params=self.parameters(),lr=0.01)
 
 
 d=CreateData(0.3,0.7)
 d.CreateTrainTestSplit()
 p=Plots()
-p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test())
+# p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test())
 
 #set seed
 torch.manual_seed(42)
@@ -95,3 +97,14 @@ model0=LinearRegressionModel()
 # print(list(model0.parameters()))
 #other option
 print(model0.state_dict())
+
+#Make some predictions with model
+with torch.inference_mode():
+    y_preds=model0(d.x_test)
+
+# Check the predictions
+print(f"Number of testing samples: {len(d.x_test)}") 
+print(f"Number of predictions made: {len(y_preds)}")
+print(f"Predicted values:\n{y_preds}")
+
+p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test(),predictions=y_preds)
