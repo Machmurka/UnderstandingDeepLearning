@@ -10,16 +10,62 @@ what_were_covering = {1: "data (prepare and load)",
     6: "putting it all together"
 }
 
+#Create Data for training model
 class CreateData:
     def __init__(self,bias,weigth) -> None:
         self.x=torch.arange(0,1,0.02).unsqueeze(dim=1) # usefull from [50] to [50,1] 
         self.y=weigth*self.x+bias
     
+    #Create Train ^ Test slit 
+    def CreateTrainTestSplit(self) ->None:
+        #Training set: The model learns from this data.	~60-80%
+        #Testing set: The model gets evaluated on this data to test what it has learned .	~10-20%
+        trainSplit=int(0.8*len(self.x))
+        self.x_train, self.y_train = self.x[:trainSplit], self.y[:trainSplit]
+        self.x_test, self.y_test = self.x[trainSplit:], self.y[trainSplit:]
+        print(len(self.x_train),len(self.x_test))
+    
+    
+    #AllGetFucntions
     def GetY(self) -> torch.Tensor:
         return self.y
     def GetX(self) -> torch.Tensor:
         return self.x
-    
+    def GetX_train(self) -> torch.Tensor:
+        return self.x_train
+    def GetY_train(self) -> torch.Tensor:
+        return self.y_train
+    def GetX_test(self)->torch.Tensor:
+        return self.x_test
+    def GetY_test(self)->torch.Tensor:
+        return self.y_test
 
-Data=CreateData(0.3,0.7)
-print(Data.GetY()[:10])
+
+    #All Print Fucntions
+    def PrintAllPair(self) -> None:
+        print(f"Training Data pairs X:{self.GetX()[:,0]} \n and Y: {self.GetY()[:,0]}")
+
+
+#Creating simple plot class
+class Plots:
+    def __init__(self) -> None:
+        return None
+    
+    def plot_predictions(slef,train_data,train_labels,test_data,test_labels,predictions=None):
+        plt.figure(figsize=(10,7))
+        plt.scatter(train_data,train_labels,c="b",s=4, label="Training data")
+        plt.scatter(test_data,test_labels, c="g",s=4,label="Testing Data")
+
+        if predictions is not None:
+            plt.scatter(test_data,predictions,c="r",s=4,label="Predictions")
+        
+        plt.legend(prop={"size":14})
+
+
+
+d=CreateData(0.3,0.7)
+d.CreateTrainTestSplit()
+p=Plots()
+p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test())
+
+
