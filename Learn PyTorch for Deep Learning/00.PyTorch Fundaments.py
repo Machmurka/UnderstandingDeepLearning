@@ -93,9 +93,15 @@ print(f"Original shape: \n {x_original} \n New shape \n {x_permutate}")
 x=torch.arange(1,10).reshape(1,3,3)
 #print(f"First square bracket \n {x[0]} \n Second square bracket \n {x[0][0]} \n Third square bracket \n {x[0][0][0]} ")
 print(x)
+# tensor([[[1, 2, 3],
+        #  [4, 5, 6],
+        #  [7, 8, 9]]])
 print(f"get all values from 0th dimension and 0 index of 1st dimenstion {x[:, 0]}")
+# ([[1, 2, 3]])
 print(f"get all values of 0th & 1st dimension but only index 1 of 2nd dimension {x[:, :, 1]}") 
+# ([[2, 5, 8]])
 print(f"{x[:, 1, 1]}")
+# ([5])
 print(f"Same as x[0][0]: {x[0,0,:]}")
 
 #numpy to torch
