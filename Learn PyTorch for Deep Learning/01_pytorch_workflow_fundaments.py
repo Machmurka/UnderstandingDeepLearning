@@ -45,7 +45,6 @@ class CreateData:
     def PrintAllPair(self) -> None:
         print(f"Training Data pairs X:{self.GetX()[:,0]} \n and Y: {self.GetY()[:,0]}")
 
-
 #Creating simple plot class
 class Plots:
     def __init__(self) -> None:
@@ -60,6 +59,26 @@ class Plots:
             plt.scatter(test_data,predictions,c="r",s=4,label="Predictions")
         
         plt.legend(prop={"size":14})
+        plt.show()
+
+
+
+#create Linear Regression model class
+
+# The base class for all neural network modules, all the building blocks for neural networks are subclasses. 
+# If you're building a neural network in PyTorch, your models should subclass nn.Module. 
+# Requires a forward() method be implemented.
+class LinearRegressionModel(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        # torch.nn.Parameter	
+        # Stores tensors that can be used with nn.Module. If requires_grad=True gradients (used for updating model parameters via gradient descent) are calculated automatically, this is often referred to as "autograd".
+        self.weights = nn.Parameter(torch.randn(1,dtype=torch.float32,requires_grad=True))
+        self.bias = nn.Parameter(torch.rand(1,dtype=torch.float32,requires_grad=True))
+    
+    #Forward defines the computation in the model
+    def forward(self,x: torch.Tensor) ->torch.Tensor:
+        return self.weights*x+self.bias
 
 
 
@@ -68,4 +87,11 @@ d.CreateTrainTestSplit()
 p=Plots()
 p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test())
 
+#set seed
+torch.manual_seed(42)
+model0=LinearRegressionModel()
 
+#check the parameters within the nn.module 
+# print(list(model0.parameters()))
+#other option
+print(model0.state_dict())
