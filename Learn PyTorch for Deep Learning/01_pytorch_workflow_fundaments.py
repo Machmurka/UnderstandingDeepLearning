@@ -186,3 +186,29 @@ print(f"predicted Y withe eval {y_pred}")
 p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test(),predictions=y_preds)
 
 
+#5. saving and loading a pytorch model
+
+from pathlib import Path
+
+MODEL_PATH = Path("models")
+MODEL_PATH.mkdir(parents=True, exist_ok=True)
+
+MODEL_NAME = "01_pytorch_workflow_model_0.pth"
+MODEL_SAVE_PATH = MODEL_PATH/MODEL_NAME
+
+# 3. Save the model state dict 
+print(f"Saving model to: {MODEL_SAVE_PATH}")
+torch.save(obj=model0.state_dict(), 
+           f=MODEL_SAVE_PATH)
+
+
+loaded_model0=LinearRegressionModel()
+
+loaded_model0.load_state_dict(torch.load(f=MODEL_SAVE_PATH))
+
+loaded_model0.eval()
+
+with torch.inference_mode():
+    loaded_model_preds=loaded_model0(d.x_test)
+
+print(y_pred==loaded_model_preds)
