@@ -173,3 +173,16 @@ print("The model learned the following values for weights and bias:")
 print(model0.state_dict())
 print("\nAnd the original values for weights and bias are:")
 print(f"weights: {d.weigth}, bias: {d.bias}")
+
+
+# making predictions
+#1. set the model to eval mode
+model0.eval()
+
+# 2. set up interference mode cotext manager
+with torch.inference_mode():
+    y_pred=model0(d.x_test)
+print(f"predicted Y withe eval {y_pred}")
+p.plot_predictions(d.GetX_train(),d.GetY_train(),d.GetX_test(),d.GetY_test(),predictions=y_preds)
+
+
