@@ -154,7 +154,7 @@ class CircleModelV1(nn.Module):
         loss_fun=nn.BCEWithLogitsLoss()
         optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
 
-        epochs=10000
+        epochs=1000
         
         for epoch in range(epochs):
             self.train()
