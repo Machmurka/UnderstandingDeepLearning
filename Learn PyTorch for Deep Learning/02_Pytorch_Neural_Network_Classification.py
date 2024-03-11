@@ -41,23 +41,71 @@ class CirceModel0(nn.Module):
         self.layer1=nn.Linear(in_features=2, out_features=5)
         self.layer2=nn.Linear(in_features=5,out_features=1)
 
-    def forward(self,x):
+    def forward(self, x):
         return self.layer2(self.layer1(x))
     
-    def accuracy_fn(y_true,y_pred)->float:
+    def accuracy_fn(self, y_true, y_pred):
         corret=torch.eq(y_true,y_pred).sum().item() # torch.eq() calculates where two tensors are equa
         return(corret/len(y_pred))*100
- 
+    
+    def ToTrain(self,d:Data)->None:
+        #loss fn for binary classification
+        loss_fn=nn.BCEWithLogitsLoss() #it uses sigmoid
+
+        #optimizer as a normal SDG
+        optimizer=torch.optim.SGD(params=self.parameters(),lr=0.1)
+
+        torch.manual_seed(42)
+
+        epochs=100
+        for epoch in range(epochs):
+            ##train
+            self.train()
+
+            #1 forward pass 
+            y_logits=self(d.x_trian).squeeze()
+            y_pred=torch.round(torch.sigmoid(y_logits)) # turn logits -> pred probs -> pred labls
+
+            #2. calculate loss/accuracu
+            loss=loss_fn(y_logits,d.y_train)
+            acc=model0.accuracy_fn(d.y_train,y_pred)
+
+            #3. optimizer
+            optimizer.zero_grad()
+
+            #4 loss backwords
+            loss.backward()
+
+            #5. optimizer step
+            optimizer.step()
+
+            #testing
+            self.eval()
+            with torch.inference_mode():
+                #1.forward pass
+                test_logits=self(d.x_test).squeeze()
+                test_pred=torch.round(torch.sigmoid(test_logits))
+
+                #calculate loss
+                test_loss=loss_fn(test_logits,d.y_test)
+                test_acc=self.accuracy_fn(d.y_test, test_pred)
+            # Print out what's happening every 10 epochs
+            if epoch % 10 == 0:
+                print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test loss: {test_loss:.5f}, Test acc: {test_acc:.2f}%")
+
+            #model has 57% acc at best
+            # need to plot model decistions
+        
     
 
 d=Data()
 d.MakeDataframe()
-plt.scatter(x=d.x[:,0],
-            y=d.x[:,1],
-            c=d.y,
-            cmap=plt.cm.RdYlBu
-            )
-plt.show()
+# plt.scatter(x=d.x[:,0],
+#             y=d.x[:,1],
+#             c=d.y,
+#             cmap=plt.cm.RdYlBu
+#             )
+# plt.show()
 d.TurnIntoTensor()
 #checking in/out shape
 print(d.x.shape,d.y.shape)
@@ -88,10 +136,33 @@ print(f"\nFirst 10 test labels:\n{d.y_test[:10]}")
 # test Shape: torch.Size([200])
 # they differ we fix it later
 
-#loss fn for binary classification
-loss_fn=nn.BCEWithLogitsLoss() #it uses sigmoid
+model0.ToTrain(d)
 
-#optimizer as a normal SDG
-optimizer=torch.optim.SGD(params=model0.parameters(),lr=0.1)
+import requests
+from pathlib import Path 
 
+# Download helper functions from Learn PyTorch repo (if not already downloaded)
+if Path("helper_functions.py").is_file():
+  print("helper_functions.py already exists, skipping download")
+else:
+  print("Downloading helper_functions.py")
+  request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/main/helper_functions.py")
+  with open("helper_functions.py", "wb") as f:
+    f.write(request.content)
+
+from helper_functions import plot_predictions, plot_decision_boundary
+
+#plot using this shit from above
+plt.figure(figsize=(12,6))
+plt.subplot(1,2,1)
+plt.title("train")
+plot_decision_boundary(model0,d.x_trian,d.y_train)
+plt.subplot(1,2,2)
+plt.title("test")
+plot_decision_boundary(model0,d.x_test,d.y_test)
+plt.show()
+
+# Oh wow, it seems like we've found the cause of model's performance issue.
+# It's currently trying to split the red and blue dots using a straight line...
+# That explains the 50% accuracy. Since our data is circular, drawing a straight line can at best cut it down the middle.
 
