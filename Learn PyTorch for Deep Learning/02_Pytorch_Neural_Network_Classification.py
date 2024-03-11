@@ -34,7 +34,7 @@ class Data():
         #test_size=0.2 20% for test and 80% fro train
         self.x_trian,self.x_test,self.y_train,self.y_test=train_test_split(self.x,self.y,test_size=0.2,random_state=42)
         print(len(self.x_trian),len(self.x_test))
-class CirceModel0(nn.Module):
+class CircleModel0(nn.Module):
     def __init__(self):
         super().__init__()
         #creating layers 2 nn.Linear layers capable of handling x and y output shape
@@ -96,16 +96,102 @@ class CirceModel0(nn.Module):
             #model has 57% acc at best
             # need to plot model decistions
         
+class PlotStuff():
+    def __init__(self,data:Data) -> None:
+        self.d=data
     
+    def PlotStartingData(self)->None:
+        plt.scatter(x=d.x[:,0],
+            y=d.x[:,1],
+            c=d.y,
+            cmap=plt.cm.RdYlBu
+            )
+        plt.show()
+
+    
+    def PlotModel(self,model)->None:
+        import requests
+        from pathlib import Path 
+
+        # Download helper functions from Learn PyTorch repo (if not already downloaded)
+        if Path("helper_functions.py").is_file():
+          print("helper_functions.py already exists, skipping download")
+        else:
+          print("Downloading helper_functions.py")
+          request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/main/helper_functions.py")
+          with open("helper_functions.py", "wb") as f:
+            f.write(request.content)
+
+        from helper_functions import plot_predictions, plot_decision_boundary
+
+        #plot using this shit from above
+        plt.figure(figsize=(12,6))
+        plt.subplot(1,2,1)
+        plt.title("train")
+        plot_decision_boundary(model,d.x_trian,d.y_train)
+        plt.subplot(1,2,2)
+        plt.title("test")
+        plot_decision_boundary(model,d.x_test,d.y_test)
+        plt.show()
+
+class CircleModelV1(nn.Module):
+    def __init__(self,data:Data) -> None:
+        super().__init__()
+        self.layer1=nn.Linear(in_features=2,out_features=10)
+        self.layer2=nn.Linear(in_features=10,out_features=10)
+        self.layer3=nn.Linear(in_features=10,out_features=1)
+        self.d=data
+
+    def forward(self,x):
+        return(self.layer3(self.layer2(self.layer1(x))))
+
+    def accuracy_fn(self, y_true, y_pred):
+        corret=torch.eq(y_true,y_pred).sum().item() # torch.eq() calculates where two tensors are equa
+        return(corret/len(y_pred))*100
+
+    def ToTrain(self)->None:
+
+        loss_fun=nn.BCEWithLogitsLoss()
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+
+        epochs=10000
+        
+        for epoch in range(epochs):
+            self.train()
+            #forward pass
+            y_logits=self(d.x_trian).squeeze()
+            y_pred=torch.round(torch.sigmoid(y_logits)) # logits -> predicition probabilities -> prediction labels
+
+            # 2. calculate loss/acc
+            loss=loss_fun(y_logits,d.y_train)
+            acc=self.accuracy_fn(d.y_train,y_pred)
+
+            optimizer.zero_grad()
+
+            loss.backward()
+
+            optimizer.step()            
+
+            self.eval()
+
+            with torch.inference_mode():
+                test_logits=self(d.x_test).squeeze()
+                test_pred=torch.round(torch.sigmoid(test_logits))
+
+                #calculate loss
+                test_loss=loss_fun(test_pred,d.y_test)
+                test_acc=self.accuracy_fn(d.y_test,test_pred)
+                if epoch % 100 == 0:
+                    print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test loss: {test_loss:.5f}, Test acc: {test_acc:.2f}%")
+
+
+
 
 d=Data()
+p=PlotStuff(d)
+p.PlotStartingData()
 d.MakeDataframe()
-# plt.scatter(x=d.x[:,0],
-#             y=d.x[:,1],
-#             c=d.y,
-#             cmap=plt.cm.RdYlBu
-#             )
-# plt.show()
+
 d.TurnIntoTensor()
 #checking in/out shape
 print(d.x.shape,d.y.shape)
@@ -117,7 +203,7 @@ print(f"Shapes for one sample of X: {x_sample.shape} and the same for y: {y_samp
 
 d.SplitData()
    
-model0=CirceModel0()
+model0=CircleModel0()
 print(model0)
 
 #we can replace CirceModel0 with
@@ -137,32 +223,15 @@ print(f"\nFirst 10 test labels:\n{d.y_test[:10]}")
 # they differ we fix it later
 
 model0.ToTrain(d)
-
-import requests
-from pathlib import Path 
-
-# Download helper functions from Learn PyTorch repo (if not already downloaded)
-if Path("helper_functions.py").is_file():
-  print("helper_functions.py already exists, skipping download")
-else:
-  print("Downloading helper_functions.py")
-  request = requests.get("https://raw.githubusercontent.com/mrdbourke/pytorch-deep-learning/main/helper_functions.py")
-  with open("helper_functions.py", "wb") as f:
-    f.write(request.content)
-
-from helper_functions import plot_predictions, plot_decision_boundary
-
-#plot using this shit from above
-plt.figure(figsize=(12,6))
-plt.subplot(1,2,1)
-plt.title("train")
-plot_decision_boundary(model0,d.x_trian,d.y_train)
-plt.subplot(1,2,2)
-plt.title("test")
-plot_decision_boundary(model0,d.x_test,d.y_test)
-plt.show()
-
+p.PlotModel(model0)
 # Oh wow, it seems like we've found the cause of model's performance issue.
 # It's currently trying to split the red and blue dots using a straight line...
 # That explains the 50% accuracy. Since our data is circular, drawing a straight line can at best cut it down the middle.
+
+model1=CircleModelV1(d)
+model1.ToTrain()
+p.PlotModel(model1)
+#despite the increase of hidden units it's still single line 
+
+
 
