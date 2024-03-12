@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from sklearn.datasets import make_circles
 import pandas as pd
 
+#  To summarize the above, a model's raw output is referred to as logits.
+
 class Data():
 
     def __init__(self) -> None:
@@ -299,18 +301,22 @@ class CircleModelV2(nn.Module):
 class BlobData():
     def __init__(self) -> None:
         from sklearn.datasets import make_blobs
-        
+        self.NUM_CLASSES = 4
+        self.NUM_FEATURES = 2
+        self.RANDOM_SEED = 42
 
         self.x,self.y= make_blobs(n_samples=1000,
-            n_features=2, # X features
-            centers=4, # y labels 
+            n_features=self.NUM_FEATURES, # X features (x,y point on plot)
+            centers=self.NUM_CLASSES, # y labels
             cluster_std=1.5, # give the clusters a little shake up (try changing this to 1.0, the default)
-            random_state=42
+            random_state=self.RANDOM_SEED
         )
     def IntoTensors(self)->None:
         self.x=torch.from_numpy(self.x).type(torch.float)
         self.y=torch.from_numpy(self.y).type(torch.LongTensor) #tensor([3, 2, 2, 1, 1] why as longTensor?
         print(self.x[:5],self.y[:5])
+        self.Split()
+
     def Split(self)->None:
         from sklearn.model_selection import train_test_split
         self.x_train,self.x_test,self.y_train,self.y_test = train_test_split(
@@ -325,61 +331,92 @@ class BlobData():
         plt.scatter(self.x[:,0],self.x[:,1],c=self.y,cmap=plt.cm.RdYlBu)
         plt.show()
 
+class BlobModel(nn.Module):
+    def __init__(self,Data:BlobData,num_hidden_units) -> None:
+        super().__init__()
+        self.data=Data
+        self.linear_layer_stack= nn.Sequential(
+            nn.Linear(in_features=self.data.NUM_FEATURES, out_features=num_hidden_units),
+            nn.Linear(in_features=num_hidden_units,out_features=num_hidden_units),
+            nn.Linear(in_features=num_hidden_units, out_features=self.data.NUM_CLASSES)
+        )
 
-d=Data()
-p=PlotStuff(d)
-p.PlotStartingData()
-d.MakeDataframe()
+    def forward(self,x):
+        return self.linear_layer_stack(x)
 
-d.TurnIntoTensor()
-#checking in/out shape
-print(d.x.shape,d.y.shape)
+    def TrainModel(self):
+        loss_fn=nn.CrossEntropyLoss()
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
 
-x_sample=d.x[0]
-y_sample=d.y[0]
-print(f"Values for one sample of X: {x_sample} and the same for y: {y_sample}")
-print(f"Shapes for one sample of X: {x_sample.shape} and the same for y: {y_sample.shape}")
+        #make fest predictions
+        print(self(self.data.x_train)[0], self.data.NUM_CLASSES)
 
-d.SplitData()
+
+        #  To summarize the above, a model's raw output is referred to as logits.
+        y_logits = self(self.data.x_test)
+        y_pred_prob=torch.softmax(y_logits,dim=1)
+        print(f'logits: {y_logits[:5]}, y_prediction probailities(useage of softmax){y_pred_prob[:5]}')
+        # print(torch.sum(y_pred_prob,dim=1))
+        print(f'y_prediction probailities{y_pred_prob[0]} and max {torch.argmax(y_pred_prob[0])}')
+
+# d=Data()
+# p=PlotStuff(d)
+# p.PlotStartingData()
+# d.MakeDataframe()
+
+# d.TurnIntoTensor()
+# #checking in/out shape
+# print(d.x.shape,d.y.shape)
+
+# x_sample=d.x[0]
+# y_sample=d.y[0]
+# print(f"Values for one sample of X: {x_sample} and the same for y: {y_sample}")
+# print(f"Shapes for one sample of X: {x_sample.shape} and the same for y: {y_sample.shape}")
+
+# d.SplitData()
    
-model0=CircleModel0()
-print(model0)
+# model0=CircleModel0()
+# print(model0)
 
-#we can replace CirceModel0 with
-model_0=nn.Sequential(
-    nn.Linear(in_features=2,out_features=5),
-    nn.Linear(in_features=5,out_features=1)
-)
+# #we can replace CirceModel0 with
+# model_0=nn.Sequential(
+#     nn.Linear(in_features=2,out_features=5),
+#     nn.Linear(in_features=5,out_features=1)
+# )
 
-untrain_pred=model0(d.x_test)
-print(f"Length of predictions: {len(untrain_pred)}, Shape: {untrain_pred.shape}")
-print(f"Length of test samples: {len(d.y_test)}, Shape: {d.y_test.shape}")
-print(f"\nFirst 10 predictions:\n{untrain_pred[:10]}")
-print(f"\nFirst 10 test labels:\n{d.y_test[:10]}")
+# untrain_pred=model0(d.x_test)
+# print(f"Length of predictions: {len(untrain_pred)}, Shape: {untrain_pred.shape}")
+# print(f"Length of test samples: {len(d.y_test)}, Shape: {d.y_test.shape}")
+# print(f"\nFirst 10 predictions:\n{untrain_pred[:10]}")
+# print(f"\nFirst 10 test labels:\n{d.y_test[:10]}")
 
-# pred Shape: torch.Size([200, 1])
-# test Shape: torch.Size([200])
-# they differ we fix it later
+# # pred Shape: torch.Size([200, 1])
+# # test Shape: torch.Size([200])
+# # they differ we fix it later
 
-model0.ToTrain(d)
-p.PlotModel(model0)
-# Oh wow, it seems like we've found the cause of model's performance issue.
-# It's currently trying to split the red and blue dots using a straight line...
-# That explains the 50% accuracy. Since our data is circular, drawing a straight line can at best cut it down the middle.
+# model0.ToTrain(d)
+# p.PlotModel(model0)
+# # Oh wow, it seems like we've found the cause of model's performance issue.
+# # It's currently trying to split the red and blue dots using a straight line...
+# # That explains the 50% accuracy. Since our data is circular, drawing a straight line can at best cut it down the middle.
 
-model1=CircleModelV1(d)
-model1.ToTrain()
-p.PlotModel(model1)
-#despite the increase of hidden units it's still single line 
+# model1=CircleModelV1(d)
+# model1.ToTrain()
+# p.PlotModel(model1)
+# #despite the increase of hidden units it's still single line 
 
-Singleline=SingleLine()
-Singleline.model()
-# p.PlotLine(Singleline)
-# p.PlotLine(Singleline,Singleline.y_pred)
+# Singleline=SingleLine()
+# Singleline.model()
+# # p.PlotLine(Singleline)
+# # p.PlotLine(Singleline,Singleline.y_pred)
 
-model2=CircleModelV2(d)
-model2.TrainModel()
-p.PlotModel(model2)
+# model2=CircleModelV2(d)
+# model2.TrainModel()
+# p.PlotModel(model2)
 db=BlobData()
 db.IntoTensors()
 db.plotBlob()
+
+model3=BlobModel(db,num_hidden_units=8)
+print(model3)
+model3.TrainModel()
