@@ -34,8 +34,8 @@ class Data():
         #spliting data using train test split from sklearn
         from sklearn.model_selection import train_test_split
         #test_size=0.2 20% for test and 80% fro train
-        self.x_trian,self.x_test,self.y_train,self.y_test=train_test_split(self.x,self.y,test_size=0.2,random_state=42)
-        print(len(self.x_trian),len(self.x_test))
+        self.x_train,self.x_test,self.y_train,self.y_test=train_test_split(self.x,self.y,test_size=0.2,random_state=42)
+        print(len(self.x_train),len(self.x_test))
 class CircleModel0(nn.Module):
     def __init__(self):
         super().__init__()
@@ -65,7 +65,7 @@ class CircleModel0(nn.Module):
             self.train()
 
             #1 forward pass 
-            y_logits=self(d.x_trian).squeeze()
+            y_logits=self(d.x_train).squeeze()
             y_pred=torch.round(torch.sigmoid(y_logits)) # turn logits -> pred probs -> pred labls
 
             #2. calculate loss/accuracu
@@ -116,7 +116,7 @@ class PlotStuff():
         if predictions != None: 
             plt.scatter(model.x_test,model.y_pred,c='r', s=4) 
         plt.show()
-    def PlotModel(self,model)->None:
+    def PlotModel(self,model,data)->None:
         import requests
         from pathlib import Path 
 
@@ -135,10 +135,10 @@ class PlotStuff():
         plt.figure(figsize=(12,6))
         plt.subplot(1,2,1)
         plt.title("train")
-        plot_decision_boundary(model,d.x_trian,d.y_train)
+        plot_decision_boundary(model,data.x_train,data.y_train)
         plt.subplot(1,2,2)
         plt.title("test")
-        plot_decision_boundary(model,d.x_test,d.y_test)
+        plot_decision_boundary(model,data.x_test,data.y_test)
         plt.show()
 
 class CircleModelV1(nn.Module):
@@ -166,7 +166,7 @@ class CircleModelV1(nn.Module):
         for epoch in range(epochs):
             self.train()
             #forward pass
-            y_logits=self(d.x_trian).squeeze()
+            y_logits=self(d.x_train).squeeze()
             y_pred=torch.round(torch.sigmoid(y_logits)) # logits -> predicition probabilities -> prediction labels
 
             # 2. calculate loss/acc
@@ -275,7 +275,7 @@ class CircleModelV2(nn.Module):
         for epoch in range(epochs):
             self.train()
 
-            y_logits=self(d.x_trian).squeeze()
+            y_logits=self(d.x_train).squeeze()
             y_pred=torch.round(torch.sigmoid(y_logits))
 
             loss=loss_fn(y_logits,d.y_train)
@@ -343,12 +343,13 @@ class BlobModel(nn.Module):
 
     def forward(self,x):
         return self.linear_layer_stack(x)
+    
+    def accuracy_fn(self, y_true, y_pred):
+        corret=torch.eq(y_true,y_pred).sum().item() # torch.eq() calculates where two tensors are equa
+        return(corret/len(y_pred))*100
 
-    def TrainModel(self):
-        loss_fn=nn.CrossEntropyLoss()
-        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
-
-        #make fest predictions
+    def TestCheck(self):
+        # check if output from network == out of data sample 
         print(self(self.data.x_train)[0], self.data.NUM_CLASSES)
 
 
@@ -359,8 +360,61 @@ class BlobModel(nn.Module):
         # print(torch.sum(y_pred_prob,dim=1))
         print(f'y_prediction probailities{y_pred_prob[0]} and max {torch.argmax(y_pred_prob[0])}')
 
-# d=Data()
-# p=PlotStuff(d)
+
+
+    def TrainModel(self):
+        loss_fn=nn.CrossEntropyLoss()
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+
+        epochs=1000
+
+        for epoch in range(epochs):
+            self.train()
+            # go from logits -> 
+            y_logits=self(self.data.x_train)
+            # prediction probabilities ->         prediction labels
+            y_pred=torch.softmax(y_logits, dim=1).argmax(dim=1)
+            
+            loss=loss_fn(y_logits,self.data.y_train)
+            # acc=self.accuracy_fn(self.data.y_train,y_pred)
+
+            optimizer.zero_grad()
+
+            loss.backward()
+
+            optimizer.step()
+
+            self.eval()
+            with torch.inference_mode():
+                test_logit=self(self.data.x_test)
+                test_pred=torch.softmax(test_logit,dim=1).argmax(dim=1)
+                
+                test_loss=loss_fn(test_logit,self.data.y_test)
+                # test_acc=self.accuracy_fn(self.data.y_test,test_logit)
+            if epoch % 10 == 0:
+                print(f"Epoch: {epoch} | Loss: {loss:.5f}| Test Loss: {test_loss:.5f}")
+    
+    def Predictions(self):
+        self.eval()
+        with torch.inference_mode():
+            y_logits=self(self.data.x_test)
+        print(y_logits[:5])
+        print(self.data.y_test[:5],self.data.y_test.shape)
+        self.y_preds=torch.softmax(y_logits, dim=1).argmax(dim=1)
+        print(self.y_preds[:5],self.y_preds.shape)
+        print(f'accuracy of model:{self.accuracy_fn(self.data.y_test,self.y_preds)}')
+
+        from torchmetrics import Accuracy
+        torchmetrics_accuracy = Accuracy(task="multiclass",num_classes=int(4))
+        print(torchmetrics_accuracy(self.y_preds,self.data.y_test))
+
+
+        
+      
+
+
+d=Data()
+p=PlotStuff(d)
 # p.PlotStartingData()
 # d.MakeDataframe()
 
@@ -419,4 +473,7 @@ db.plotBlob()
 
 model3=BlobModel(db,num_hidden_units=8)
 print(model3)
+# model3.TestCheck()
 model3.TrainModel()
+model3.Predictions()
+p.PlotModel(model3,db)
