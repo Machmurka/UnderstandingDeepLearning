@@ -296,6 +296,36 @@ class CircleModelV2(nn.Module):
                 if epoch % 100 == 0:
                     print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Accuracy: {test_acc:.2f}%")
 
+class BlobData():
+    def __init__(self) -> None:
+        from sklearn.datasets import make_blobs
+        
+
+        self.x,self.y= make_blobs(n_samples=1000,
+            n_features=2, # X features
+            centers=4, # y labels 
+            cluster_std=1.5, # give the clusters a little shake up (try changing this to 1.0, the default)
+            random_state=42
+        )
+    def IntoTensors(self)->None:
+        self.x=torch.from_numpy(self.x).type(torch.float)
+        self.y=torch.from_numpy(self.y).type(torch.LongTensor) #tensor([3, 2, 2, 1, 1] why as longTensor?
+        print(self.x[:5],self.y[:5])
+    def Split(self)->None:
+        from sklearn.model_selection import train_test_split
+        self.x_train,self.x_test,self.y_train,self.y_test = train_test_split(
+            self.x,
+            self.y,
+            test_size=0.2,
+            random_state=42
+        )
+    def plotBlob(self):
+       
+        plt.figure(figsize=(10,7))
+        plt.scatter(self.x[:,0],self.x[:,1],c=self.y,cmap=plt.cm.RdYlBu)
+        plt.show()
+
+
 d=Data()
 p=PlotStuff(d)
 p.PlotStartingData()
@@ -350,3 +380,6 @@ Singleline.model()
 model2=CircleModelV2(d)
 model2.TrainModel()
 p.PlotModel(model2)
+db=BlobData()
+db.IntoTensors()
+db.plotBlob()
