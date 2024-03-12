@@ -349,3 +349,4 @@ Singleline.model()
 
 model2=CircleModelV2(d)
 model2.TrainModel()
+p.PlotModel(model2)
