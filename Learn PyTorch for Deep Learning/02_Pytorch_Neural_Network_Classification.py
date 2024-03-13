@@ -389,7 +389,7 @@ class BlobModel(nn.Module):
                 test_logit=self(self.data.x_test)
                 test_pred=torch.softmax(test_logit,dim=1).argmax(dim=1)
                 
-                test_loss=loss_fn(test_logit,self.data.y_test)
+                test_loss=loss_fn(test_pred,self.data.y_test)
                 # test_acc=self.accuracy_fn(self.data.y_test,test_logit)
             if epoch % 10 == 0:
                 print(f"Epoch: {epoch} | Loss: {loss:.5f}| Test Loss: {test_loss:.5f}")
