@@ -5,9 +5,9 @@ class DataMoon:
   def __init__(self)->None:
     pass
 
-  def MakeMoons(self)->None:
+  def MakeMoons(self,sample)->None:
     from sklearn.datasets import make_moons
-    self.x, self.y=make_moons(n_samples=1000,noise=0.09)
+    self.x, self.y=make_moons(n_samples=sample,noise=0.09)
     self.ToTensor()
 
   def ToTensor(self)->None:
@@ -79,12 +79,14 @@ class MoonModel(nn.Module):
   def ToTrain(self,data:DataMoon):
     from torchmetrics.classification import BinaryAccuracy
     metric=BinaryAccuracy()
-    optimizer=torch.optim.SGD(self.parameters(),lr=0.1) #bulid basic model then test new optimizers and loss
+    # optimizer=torch.optim.SGD(self.parameters(),lr=0.01) #bulid basic model then test new optimizers and loss
+    optimizer=torch.optim.Adam(self.parameters(),lr=0.01)
     # use CrossEntropyLoss for binary classification, treating it as a two-class problem
     # your target is a float tensor of 0s and 1s, you should use BCEWithLogitsLoss
     loss_fn=nn.BCEWithLogitsLoss() 
-
-    epochs=1000
+    acc_to_plot_train=[]
+    acc_to_plot_test=[]
+    epochs=300
     for epoch in range(epochs):
       self.train()
 
@@ -96,7 +98,7 @@ class MoonModel(nn.Module):
 
       loss=loss_fn(logits,data.y_train)
       acc=metric(preds,data.y_train)
-
+      acc_to_plot_train.append(acc)
       optimizer.zero_grad()
 
       loss.backward()
@@ -109,13 +111,16 @@ class MoonModel(nn.Module):
 
         test_loss=loss_fn(test_logits,data.y_test)
         test_acc=metric(test_pred,data.y_test)
+        acc_to_plot_test.append(test_acc)
       if epoch % 20 == 0:
          print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Accuracy: {test_acc:.2f}%")
-
+    fig, ax = plt.subplots(nrows=1, ncols=2)
+    metric.plot(acc_to_plot_train,ax=ax[0])
+    metric.plot(acc_to_plot_test,ax=ax[1])
 
 if __name__=='__main__':
   data=DataMoon()
-  data.MakeMoons()
+  data.MakeMoons(1000)
   p=Plot(data)
   #  p.PlotCircle()
   Model0=MoonModel(10)
