@@ -53,12 +53,14 @@ class Plot:
 
 class MoonModel(nn.Module):
     #will add relu later need to chceck if plot module works
-  def __init__(self) -> None:
+  def __init__(self,H_D) -> None:
     super().__init__()
-    HIDDEN_LAYER=10
+    HIDDEN_LAYER=H_D
     self.LinearStack=nn.Sequential(
        nn.Linear(in_features=2,out_features=HIDDEN_LAYER),
+       nn.ReLU(),
        nn.Linear(in_features=HIDDEN_LAYER,out_features=HIDDEN_LAYER),
+       nn.ReLU(),
        nn.Linear(in_features=HIDDEN_LAYER,out_features=1)
     )
   def forward(self,x):
@@ -72,20 +74,51 @@ class MoonModel(nn.Module):
       labels=torch.round(preds)
       
     # print(labels.dtype,data.y_test.dtype)
-    # from torchmetrics.classification import BinaryAccuracy
-    # metric=BinaryAccuracy()
+
   
   def ToTrain(self,data:DataMoon):
-    optimizer=torch.optim.SGD(self.parameters) #bulid basic model then test new optimizers and loss
-    loss_fn=nn.CrossEntropyLoss() # use CrossEntropyLoss for binary classification, treating it as a two-class problem
+    from torchmetrics.classification import BinaryAccuracy
+    metric=BinaryAccuracy()
+    optimizer=torch.optim.SGD(self.parameters(),lr=0.1) #bulid basic model then test new optimizers and loss
+    # use CrossEntropyLoss for binary classification, treating it as a two-class problem
+    # your target is a float tensor of 0s and 1s, you should use BCEWithLogitsLoss
+    loss_fn=nn.BCEWithLogitsLoss() 
 
+    epochs=1000
+    for epoch in range(epochs):
+      self.train()
+
+      logits=self(data.x_train).squeeze()
+      # Sigmoid is used for binary classification methods where we only have 2 classes, 
+      # while SoftMax applies to multiclass problems. In fact, the SoftMax function is an extension of the Sigmoid function.
+      preds=torch.sigmoid(logits) 
+
+
+      loss=loss_fn(logits,data.y_train)
+      acc=metric(preds,data.y_train)
+
+      optimizer.zero_grad()
+
+      loss.backward()
+      optimizer.step()
+
+      self.eval()
+      with torch.inference_mode():
+        test_logits=self(data.x_test).squeeze()
+        test_pred=torch.sigmoid(test_logits)
+
+        test_loss=loss_fn(test_logits,data.y_test)
+        test_acc=metric(test_pred,data.y_test)
+      if epoch % 20 == 0:
+         print(f"Epoch: {epoch} | Loss: {loss:.5f}, Accuracy: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Accuracy: {test_acc:.2f}%")
 
 
 if __name__=='__main__':
   data=DataMoon()
   data.MakeMoons()
-  #  p=Plot(data)
+  p=Plot(data)
   #  p.PlotCircle()
-  Model0=MoonModel()
+  Model0=MoonModel(10)
   print(Model0.state_dict)
-  Model0.TestInOut(data)
+  Model0.ToTrain(data)
+  p.PlotModel(Model0,data)
