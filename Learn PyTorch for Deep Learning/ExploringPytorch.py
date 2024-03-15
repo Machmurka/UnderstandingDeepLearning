@@ -141,7 +141,7 @@ class MoonModelDropOut(nn.Module):
   def forward(self,x):
     return(self.LinearStack(x))
   
-  def TestInOut(self,data:DataMoon):
+  def TestInOut(self,data:DataMoon,batch_size):
     self.eval()
     with torch.inference_mode():
       logits=self(data.x_test).squeeze()
