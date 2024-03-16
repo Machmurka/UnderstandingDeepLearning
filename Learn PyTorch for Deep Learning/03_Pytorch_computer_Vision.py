@@ -78,28 +78,113 @@ class FashionMNISTModel0(nn.Module):
             nn.Flatten(),
             nn.Linear(in_features=in_shape,out_features=hidden_units),
             nn.ReLU(),
-            nn.Linear(in_features=hidden_units,out_features=out_shape)
+            nn.Linear(in_features=hidden_units,out_features=out_shape),
+            nn.ReLU()
         )
 
     def forward(self,x):
         return self.layer_stack(x)
+    
+    def print_train_time(self,start:float,end:float,device: torch.device=None)->float:
+        """Prints difference between start and end time.
+
+        Args:
+            start (float): Start time of computation (preferred in timeit format). 
+            end (float): End time of computation.
+            device ([type], optional): Device that compute is running on. Defaults to None.
+
+        Returns:
+            float: time between start and end in seconds (higher is longer).
+        """
+        total_time = end - start
+    
+        print(f"Train time on {device}: {total_time:.3f} seconds")
+        return total_time
+    
+    def MainTrain(self,data:DataLoader):
+        from tqdm.auto import tqdm
+        from helper_functions import accuracy_fn
+        from timeit import default_timer as timer
 
 
+        loss_fn=nn.CrossEntropyLoss()
+        optimizer=torch.optim.Adam(self.parameters())
+
+        train_time_start_cpu= timer()
+        epochs =3 
+        for epoch in tqdm(range(epochs)):
+            print(f"Epoch : {epoch}\n -------")
+
+            #for testing loss per epochs
+            train_loss=0
+            for batch, (X,y) in enumerate(data.train_dataloader):
+                self.train()
+                y_pred=self(X)
+
+                loss=loss_fn(y_pred,y)
+                train_loss+=loss
+
+                optimizer.zero_grad()
+
+                loss.backward()
+                
+                optimizer.step()
+
+                        # Print out how many samples have been seen
+                if batch % 400 == 0:
+                    print(f"Looked at {batch * len(X)}/{len(data.train_dataloader.dataset)} samples")
+
+            # Divide total train loss by length of train dataloader (average loss per batch per epoch)
+            train_loss /= len(data.train_dataloader)
+
+            ##testing
+            test_loss,test_acc=0,0
+
+            self.eval()
+            with torch.inference_mode():
+                for X,y in data.test_dataloader:
+                    test_pred=self(X)
+
+                    test_loss+=loss_fn(test_pred,y)
+
+                    test_acc+=accuracy_fn(y,test_pred.argmax(dim=1))
+                    
+                    # Calculations on test metrics need to happen inside torch.inference_mode()
+                    # Divide total test loss by length of test dataloader (per batch)
+                    test_loss /= len(data.test_dataloader)
+
+                    # Divide total accuracy by length of test dataloader (per batch)
+                    test_acc /= len(data.test_dataloader)
+
+                ## Print out what's happening
+                print(f"\nTrain loss: {train_loss:.5f} | Test loss: {test_loss:.5f}, Test acc: {test_acc:.2f}%\n")
+
+        train_time_end_cpu = timer()
+        total_train_time=self.print_train_time(train_time_start_cpu,train_time_end_cpu)
+
+
+                 
+
+    
 if __name__=='__main__':
     data=DataFashon()
     p=Plot()
     #p.plotIMGS(data)
     dataloader=DataLoader(data)
 
-    #testing flatten model
-    flatten_model=nn.Flatten() # all nn modules function as a model (can do a forward pass)
+    # #testing flatten model
+    # flatten_model=nn.Flatten() # all nn modules function as a model (can do a forward pass)
 
-    x=dataloader.train_features_batch[0]
+    # x=dataloader.train_features_batch[0]
 
-    output=flatten_model(x)
+    # output=flatten_model(x)
 
-    print(f"Shape before flattening: {x.shape} -> [color_channels, height, width]")
-    print(f"Shape after flattening: {output.shape} -> [color_channels, height*width]")
+    # print(f"Shape before flattening: {x.shape} -> [color_channels, height, width]")
+    # print(f"Shape after flattening: {output.shape} -> [color_channels, height*width]")
+    model0=FashionMNISTModel0(784,80,len(data.class_names))
+    model0.to("cpu")
+    print(model0.state_dict)
+    model0.MainTrain(dataloader)
 
-
+    
 
