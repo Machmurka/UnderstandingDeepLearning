@@ -136,7 +136,27 @@ class FashionMNISTModel0(nn.Module):
         test_acc /= len(data.test_dataloader)
         print(f"Test loss: {test_loss:.5f} | Test accuracy: {test_acc:.2f}%\n")    
 
-    def MainTrain(self,data:DataLoader):
+    def ToTrain(self,data:DataLoader):
+        from helper_functions import accuracy_fn
+        from timeit import default_timer as timer
+        from tqdm.auto import tqdm
+
+
+        loss_fn=nn.CrossEntropyLoss()
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+        
+        train_time_start=timer()
+        epochs=5
+
+        for epoch in tqdm(range(epochs)):
+            print(f"Epoch: {epoch}\n")
+            self.train_step(data,loss_fn,optimizer,accuracy_fn)
+            self.test_step(data,loss_fn,optimizer,accuracy_fn)
+
+        train_time_stop=timer()
+        self.print_train_time(train_time_start,train_time_stop,"CPU")
+
+    def OldMainTrain(self,data:DataLoader):
         from tqdm.auto import tqdm
         from helper_functions import accuracy_fn
         from timeit import default_timer as timer
@@ -201,25 +221,7 @@ class FashionMNISTModel0(nn.Module):
         train_time_end_cpu = timer()
         total_train_time=self.print_train_time(train_time_start_cpu,train_time_end_cpu)
 
-    def ToTrain(self,data:DataLoader):
-        from helper_functions import accuracy_fn
-        from timeit import default_timer as timer
-        from tqdm.auto import tqdm
 
-
-        loss_fn=nn.CrossEntropyLoss()
-        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
-        
-        train_time_start=timer()
-        epochs=5
-
-        for epoch in tqdm(range(epochs)):
-            print(f"Epoch: {epoch}\n")
-            self.train_step(data,loss_fn,optimizer,accuracy_fn)
-            self.test_step(data,loss_fn,optimizer,accuracy_fn)
-
-        train_time_stop=timer()
-        self.print_train_time(train_time_start,train_time_stop,"CPU")
     
 class FashionMNISTModelConv(nn.Module):
     # https://poloclub.github.io/cnn-explainer/
@@ -231,7 +233,7 @@ class FashionMNISTModelConv(nn.Module):
                       out_channels=hidden_units,
                       kernel_size=3,
                       stride=1,
-                      padding="valid"
+                      padding=1
                       ),
             nn.ReLU(),
             nn.Conv2d(
@@ -239,7 +241,7 @@ class FashionMNISTModelConv(nn.Module):
                 out_channels=hidden_units,
                 kernel_size=3,
                 stride=1,
-                padding="valid"
+                padding=1
             ),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2,stride=2)
@@ -260,15 +262,95 @@ class FashionMNISTModelConv(nn.Module):
                 padding=1
             ),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2)
+            nn.MaxPool2d(2)
         )
         self.classifier=nn.Sequential(
             nn.Flatten(),
             nn.Linear(in_features=hidden_units*7*7,
                       out_features=output_shape)
-        )
         
+        )
+        print(self.state_dict)
 
+    def forward(self,x:torch.Tensor):
+        x = self.block1(x)
+        # print(x.shape)
+        x = self.block2(x)
+        # print(x.shape)
+        x = self.classifier(x)
+        # print(x.shape)
+        return x
+    
+    def print_train_time(self,start:float,end:float,device: torch.device=None)->float:
+        """Prints difference between start and end time.
+
+        Args:
+            start (float): Start time of computation (preferred in timeit format). 
+            end (float): End time of computation.
+            device ([type], optional): Device that compute is running on. Defaults to None.
+
+        Returns:
+            float: time between start and end in seconds (higher is longer).
+        """
+        total_time = end - start
+    
+        print(f"Train time on {device}: {total_time:.3f} seconds")
+        return total_time
+
+    def train_step(self,data:DataLoader,loss_fn,optimizer,accuracy_fn):
+
+
+        train_loss,train_acc=0,0
+        for batch,(X,y) in enumerate(data.train_dataloader):
+
+            y_pred=self(X)
+
+            loss=loss_fn(y_pred,y)
+            train_loss+=loss
+            train_acc+=accuracy_fn(y,y_pred.argmax(dim=1))
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        train_loss /= len(data.train_dataloader)
+        train_acc /= len(data.train_dataloader)
+        print(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
+
+    def test_step(self,data:DataLoader,loss_fn,optimizer,accuracy_fn):
+
+        test_loss,test_acc=0, 0
+        self.eval()
+        with torch.inference_mode():
+            for X,y in data.test_dataloader:
+
+                test_pred=self(X)
+                test_loss+=loss_fn(test_pred,y)
+                test_acc+=accuracy_fn(y,test_pred.argmax(dim=1))
+        
+        # Adjust metrics and print out
+        test_loss = test_loss / len(data.test_dataloader)
+        test_acc /= len(data.test_dataloader)
+        print(f"Test loss: {test_loss:.5f} | Test accuracy: {test_acc:.2f}%\n")    
+
+    def ToTrain(self,data:DataLoader):
+        from helper_functions import accuracy_fn
+        from timeit import default_timer as timer
+        from tqdm.auto import tqdm
+
+
+        loss_fn=nn.CrossEntropyLoss()
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+        
+        train_time_start=timer()
+        epochs=5
+
+        for epoch in tqdm(range(epochs)):
+            print(f"Epoch: {epoch}\n")
+            self.train_step(data,loss_fn,optimizer,accuracy_fn)
+            self.test_step(data,loss_fn,optimizer,accuracy_fn)
+
+        train_time_stop=timer()
+        self.print_train_time(train_time_start,train_time_stop,"CPU")
 
 if __name__=='__main__':
     data=DataFashon()
@@ -285,11 +367,13 @@ if __name__=='__main__':
 
     # print(f"Shape before flattening: {x.shape} -> [color_channels, height, width]")
     # print(f"Shape after flattening: {output.shape} -> [color_channels, height*width]")
-    model0=FashionMNISTModel0(784,80,len(data.class_names))
+    model0=FashionMNISTModel0(784,10,len(data.class_names))
     model0.to("cpu")
     print(model0.state_dict)
     model0.ToTrain(dataloader)
-    # model0.MainTrain(dataloader)
 
+    CNNmode0=FashionMNISTModelConv(1,10,len(data.class_names))
+    CNNmode0.ToTrain(dataloader)
+    
     
 
