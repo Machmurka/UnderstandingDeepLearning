@@ -69,10 +69,37 @@ class DataLoader():
         )
 
         print(f"Length of train dataloader{len(self.train_dataloader)}\n Length of test dataloader{len(self.test_dataloader)}")
-    
+
+        self.train_features_batch,self.train_labels_batch=next(iter(self.train_dataloader))
+class FashionMNISTModel0(nn.Module):
+    def __init__(self,in_shape:int,hidden_units:int,out_shape:int) -> None:
+        super().__init__()
+        self.layer_stack=nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=in_shape,out_features=hidden_units),
+            nn.ReLU(),
+            nn.Linear(in_features=hidden_units,out_features=out_shape)
+        )
+
+    def forward(self,x):
+        return self.layer_stack(x)
+
 
 if __name__=='__main__':
     data=DataFashon()
     p=Plot()
     #p.plotIMGS(data)
     dataloader=DataLoader(data)
+
+    #testing flatten model
+    flatten_model=nn.Flatten() # all nn modules function as a model (can do a forward pass)
+
+    x=dataloader.train_features_batch[0]
+
+    output=flatten_model(x)
+
+    print(f"Shape before flattening: {x.shape} -> [color_channels, height, width]")
+    print(f"Shape after flattening: {output.shape} -> [color_channels, height*width]")
+
+
+
