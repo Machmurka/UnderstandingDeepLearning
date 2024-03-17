@@ -92,8 +92,85 @@ class Model0(nn.Module):
         )
 
         print(self.state_dict)
+    def forward(self,x):
+        return(self.classifier(self.block2(self.block1(x))))
+    
+    def print_train_time(self,start:float,end:float)->float:
+        total_time = end - start
+    
+        print(f"Train time : {total_time:.3f} seconds")
+        return total_time
 
-    def test(self,input_shape:int,hidden_units:int,output_shape:int,data:Data):
+    def train_step(self,data:Data,loss_fn,optimizer,accuracy_fn):
+        train_loss,train_acc=0,0
+        for batch,(X,y) in enumerate(data.train_dataloader):
+            y_pred=self(X)
+
+            loss=loss_fn(y_pred,y)
+            train_loss+=loss
+            train_acc+=accuracy_fn(y,y_pred.argmax(dim=1))
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        train_loss/=len(data.train_dataloader)
+        train_acc/=len(data.train_dataloader)
+        print(f"Train loss: {train_loss:.5f} | Train accuracy: {train_acc:.2f}%")
+    
+    def test_step(self,data:Data,loss_fn,accuracy_fn):
+        
+        test_loss,test_acc=0, 0
+        self.eval()
+        with torch.inference_mode():
+            for X,y in data.test_dataloader:
+
+                test_pred=self(X)
+                test_loss+=loss_fn(test_pred,y)
+                test_acc+=accuracy_fn(y,test_pred.argmax(dim=1))
+        
+        # Adjust metics and print out
+        test_loss = test_loss / len(data.test_dataloader)
+        test_acc /= len(data.test_dataloader)
+        print(f"Test loss: {test_loss:.5f} | Test accuracy: {test_acc:.2f}%\n")    
+
+    def ToTrain(self,data:Data):
+        from helper_functions import accuracy_fn
+        from timeit import default_timer as timer
+        from tqdm.auto import tqdm
+
+        loss_fn=nn.CrossEntropyLoss()
+        
+        # test for furhter optimalization
+        optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+
+        train_time_start=timer()
+
+        epochs=3
+
+        for epoch in tqdm(range(epochs)):
+            print(f"\nEpoch: {epoch}\n")
+            self.train_step(data,loss_fn,optimizer,accuracy_fn)
+            self.test_step(data,loss_fn,accuracy_fn)
+            
+        train_time_stop=timer()
+        self.print_train_time(train_time_start,train_time_stop)
+
+        from sklearn.metrics import confusion_matrix, classification_report
+        self.eval()
+        y_preds=[]
+        true_pred=[]
+        with torch.inference_mode():
+            for X,y in data.test_dataloader:
+                y_logits=self(X)
+                y_pred=torch.softmax(y_logits,dim=1).argmax(dim=1)
+                y_preds.append(y_pred)
+                true_pred.append(y)
+        y_preds,true_pred=torch.cat(y_preds),torch.cat(true_pred)
+        print(classification_report(true_pred,y_preds))
+        cm=confusion_matrix(true_pred,y_preds)
+        print(cm)
+
+    def IOtest(self,input_shape:int,hidden_units:int,output_shape:int,data:Data):
         self.image=torch.randn(size=(32,1,28,28))
         self.testblok1=nn.Sequential(
             nn.Conv2d(
@@ -153,4 +230,6 @@ if __name__=='__main__':
     plot=Plots()
     rawdata=Data(plot)
     model0=Model0(1,3,len(rawdata.class_name))
-    model0.test(1,3,len(rawdata.class_name),rawdata)
+    model0.ToTrain(rawdata)
+    # model0.IOtest(1,3,len(rawdata.class_name),rawdata)
+    # czy możemy to narysować jak podział daty w zeszłym notebook
