@@ -49,6 +49,14 @@ class Model0(nn.Module):
     def __init__(self,input_shape:int,hidden_units:int,output_shape:int) -> None:
         super().__init__()
 
+        # epochs 10 , batchsize=32 , nn.Dropout(p=0.5)
+        # Train loss: 0.08363 | Train accuracy: 97.39%
+        # Test loss: 0.10945 | Test accuracy: 96.61%
+
+
+        # epochs 10 , batchsize=32 , no regu adde
+        # Train loss: 0.07794 | Train accuracy: 97.62%
+        # Test loss: 0.09471 | Test accuracy: 97.20%
         self.block1=nn.Sequential(
             nn.Conv2d(
                 in_channels=input_shape,
@@ -145,7 +153,7 @@ class Model0(nn.Module):
 
         train_time_start=timer()
 
-        epochs=3
+        epochs=10
 
         for epoch in tqdm(range(epochs)):
             print(f"\nEpoch: {epoch}\n")
@@ -154,7 +162,8 @@ class Model0(nn.Module):
             
         train_time_stop=timer()
         self.print_train_time(train_time_start,train_time_stop)
-
+    
+    def Matrixreport(self,data:Data):
         from sklearn.metrics import confusion_matrix, classification_report
         self.eval()
         y_preds=[]
@@ -170,6 +179,7 @@ class Model0(nn.Module):
         cm=confusion_matrix(true_pred,y_preds)
         print(cm)
 
+        
     def IOtest(self,input_shape:int,hidden_units:int,output_shape:int,data:Data):
         self.image=torch.randn(size=(32,1,28,28))
         self.testblok1=nn.Sequential(
@@ -233,3 +243,5 @@ if __name__=='__main__':
     model0.ToTrain(rawdata)
     # model0.IOtest(1,3,len(rawdata.class_name),rawdata)
     # czy możemy to narysować jak podział daty w zeszłym notebook
+
+
