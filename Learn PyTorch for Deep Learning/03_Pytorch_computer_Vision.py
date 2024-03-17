@@ -339,18 +339,69 @@ class FashionMNISTModelConv(nn.Module):
 
 
         loss_fn=nn.CrossEntropyLoss()
+
+
+        # Train time on CPU: 80.211 seconds
+        # Train loss: 0.28324 | Train accuracy: 89.75%
+        # Test loss: 0.31638 | Test accuracy: 88.93%  
         optimizer=torch.optim.SGD(self.parameters(),lr=0.1)
+
+        # Train loss: 0.38735 | Train accuracy: 86.08%
+        # Test loss: 0.41407 | Test accuracy: 85.29%
+        # Train time on CPU: 73.710 seconds
+        # optimizer=torch.optim.SGD(self.parameters(),lr=0.01)
+
+
+        # Train time on CPU: 79.149 seconds
+        # Train loss: 0.35923 | Train accuracy: 86.87%
+        # Test loss: 0.38718 | Test accuracy: 85.82%
+        # optimizer=torch.optim.Adam(self.parameters(),lr=0.01)
         
+
+        # Train time on CPU: 82.678 seconds
+        # Train loss: 2.31521 | Train accuracy: 9.92%
+        # Test loss: 2.31378 | Test accuracy: 10.01%
+        # optimizer=torch.optim.Adam(self.parameters(),lr=0.1)
+
         train_time_start=timer()
         epochs=5
 
         for epoch in tqdm(range(epochs)):
-            print(f"Epoch: {epoch}\n")
+            print(f"\nEpoch: {epoch}\n")
             self.train_step(data,loss_fn,optimizer,accuracy_fn)
             self.test_step(data,loss_fn,optimizer,accuracy_fn)
 
         train_time_stop=timer()
         self.print_train_time(train_time_start,train_time_stop,"CPU")
+
+    def ConfusionMatrix(self,data:DataLoader,dataa:DataFashon)->None:
+        from tqdm.auto import tqdm
+        y_preds=[]
+        self.eval()
+        with torch.inference_mode():
+            for X,y in tqdm(data.test_dataloader,desc="Making predictions"):
+                y_logits=self(X)
+                y_pred=torch.softmax(y_logits,dim=1).argmax(dim=1)
+                y_preds.append(y_pred)
+
+        # Concatenate list of predictions into a tensor
+        y_pred_tensor=torch.cat(y_preds)
+
+        import mlxtend
+        from torchmetrics import ConfusionMatrix
+        from mlxtend.plotting import plot_confusion_matrix
+
+        confmat = ConfusionMatrix(num_classes=len(dataa.class_names),task="multiclass")
+        confmat_tensor=confmat(preds=y_pred_tensor,
+                               target=dataa.test_data.targets)
+        
+        fix,ax=plot_confusion_matrix(
+            conf_mat=confmat_tensor.numpy(),
+            class_names=dataa.class_names,
+            figsize=(10,7)
+        )
+        plt.show()
+
 class TestingCNN(nn.Module):
     def __init__(self) -> None:
         super().__init__()
@@ -418,7 +469,7 @@ if __name__=='__main__':
 
     CNNmode0=FashionMNISTModelConv(1,10,len(data.class_names))
     CNNmode0.ToTrain(dataloader)
-    
+    CNNmode0.ConfusionMatrix(dataloader,data)
     # test=TestingCNN()
     # test.testBatch()
     
