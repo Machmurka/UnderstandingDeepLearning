@@ -351,6 +351,50 @@ class FashionMNISTModelConv(nn.Module):
 
         train_time_stop=timer()
         self.print_train_time(train_time_start,train_time_stop,"CPU")
+class TestingCNN(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def testBatch(self)->None:
+        # Create sample batch of random numbers with same size as image batch
+        self.images = torch.randn(size=(32, 3, 64, 64)) # [batch_size, color_channels, height, width]
+        self.test_image = self.images[0] # get a single image for testing
+        print(f"Image batch shape: { self.images.shape} -> [batch_size, color_channels, height, width]")
+        print(f"Single image shape: {self.test_image.shape} -> [color_channels, height, width]") 
+        # print(f"Single image pixel values:\n{self.test_image}")
+
+        conv_layer=nn.Conv2d(
+            in_channels=3,
+            out_channels=10,
+            kernel_size=3,
+            stride=1,
+            padding=0
+        )
+        print(conv_layer(self.test_image).shape)
+        conv_layer2=nn.Conv2d(
+            in_channels=3,
+            out_channels=10,
+            kernel_size=(5,5),
+            stride=2,
+            padding=0
+        )
+        print(conv_layer2(self.test_image).shape)
+        
+        # Get shapes of weight and bias tensors within conv_layer_2
+        print(f"conv_layer_2 weight shape: \n{conv_layer2.weight.shape} -> [out_channels=10, in_channels=3, kernel_size=5, kernel_size=5]")
+        print(f"\nconv_layer_2 bias shape: \n{conv_layer2.bias.shape} -> [out_channels=10]")
+
+        # Create a sample nn.MaxPoo2d() layer
+        max_pool_layer = nn.MaxPool2d(kernel_size=2)
+
+        # Pass data through just the conv_layer
+        test_image_through_conv = conv_layer(self.test_image)
+        print(f"Shape after going through conv_layer(): {test_image_through_conv.shape}")
+
+        # Pass data through the max pool layer
+        test_image_through_conv_and_max_pool = max_pool_layer(test_image_through_conv)
+        print(f"Shape after going through conv_layer() and max_pool_layer(): {test_image_through_conv_and_max_pool.shape}")
+
 
 if __name__=='__main__':
     data=DataFashon()
@@ -370,10 +414,12 @@ if __name__=='__main__':
     model0=FashionMNISTModel0(784,10,len(data.class_names))
     model0.to("cpu")
     print(model0.state_dict)
-    model0.ToTrain(dataloader)
+    # model0.ToTrain(dataloader)
 
     CNNmode0=FashionMNISTModelConv(1,10,len(data.class_names))
     CNNmode0.ToTrain(dataloader)
     
+    # test=TestingCNN()
+    # test.testBatch()
     
 
