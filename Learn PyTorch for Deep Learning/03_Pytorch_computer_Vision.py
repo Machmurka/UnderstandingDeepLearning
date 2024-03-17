@@ -467,7 +467,7 @@ if __name__=='__main__':
     print(model0.state_dict)
     # model0.ToTrain(dataloader)
 
-    CNNmode0=FashionMNISTModelConv(1,10,len(data.class_names))
+    CNNmode0=FashionMNISTModelConv(1,20,len(data.class_names))
     CNNmode0.ToTrain(dataloader)
     CNNmode0.ConfusionMatrix(dataloader,data)
     # test=TestingCNN()
