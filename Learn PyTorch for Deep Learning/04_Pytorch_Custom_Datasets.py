@@ -162,39 +162,41 @@ class CustomDataTest():
         """
             temp placement for of transform
         """
-        train_transform=transforms.Compose([
+        self.train_transform=transforms.Compose([
             transforms.Resize(size=(64,64)),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.ToTensor()
         ])
     
-        test_transforms = transforms.Compose([
+        self.test_transforms = transforms.Compose([
         transforms.Resize((64, 64)),
         transforms.ToTensor()
         ])
     
-        train_data_custom =ImageFolderCustom(data.train_dir,transform=train_transform)
-        test_data_custom=ImageFolderCustom(data.test_dir,transform=test_transforms)
+        self.train_data_custom =ImageFolderCustom(data.train_dir,transform=self.train_transform)
+        self.test_data_custom=ImageFolderCustom(data.test_dir,transform=self.test_transforms)
     
         """temp place for testing data"""    
         # Check for equality amongst our custom Dataset and ImageFolder Dataset
-        print((len(train_data_custom) == len(data.train_data)) & (len(test_data_custom) == len(data.test_data)))
-        print(train_data_custom.classes == data.train_data.classes)
-        print(train_data_custom.class_to_idx == data.train_data.class_to_idx)
+        print((len(self.train_data_custom) == len(data.train_data)) & (len(self.test_data_custom) == len(data.test_data)))
+        print(self.train_data_custom.classes == data.train_data.classes)
+        print(self.train_data_custom.class_to_idx == data.train_data.class_to_idx)
 
-   
-    def find_classes(self,directory:str)->Tuple[list[str],dict[str,int]]:
-        classes=sorted(entry.name for entry in os.scandir(directory) if entry.is_dir())
+        self.IntoDataLoaders()
 
-        if not classes:
-            raise FileNotFoundError(f"Couldn't find any classes in {directory}.")
-        
-        class_to_idx={cls_name: i for i, cls_name in enumerate(classes)}
-        
-        print(classes,class_to_idx)
-        return classes,class_to_idx
-    
+    def IntoDataLoaders(self):
+        self.train_dataloader_custom = DataLoader(dataset=self.train_data_custom, # use custom created train Dataset
+                                     batch_size=1, # how many samples per batch?
+                                     num_workers=0, # how many subprocesses to use for data loading? (higher = more)
+                                     shuffle=True) # shuffle the data?
 
+        self.test_dataloader_custom = DataLoader(dataset=self.test_data_custom, # use custom created test Dataset
+                                    batch_size=1, 
+                                    num_workers=0, 
+                                    shuffle=False) # don't usually need to shuffle testing data
+
+        img,label=next(iter(self.test_dataloader_custom))
+        print(f"shape of custome dataloader img {img.shape}")
 
 
 if __name__=="__main__":
