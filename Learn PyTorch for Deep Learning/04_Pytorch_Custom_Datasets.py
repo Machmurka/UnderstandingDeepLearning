@@ -22,9 +22,9 @@ class SetData():
         data_dir = Path('C:\\Users\\Jakub Machura\\source\\repos\\UnderstandingDeepLearning\\data') # Create a Path object
         image_path_list = list(data_dir.glob("*/*/*/*.jpg"))  # Call glob on the Path object
         print(image_path_list)        
-        self.random_image_path = random.choice(image_path_list)
-        image_class = self.random_image_path.parent.stem
-        self.img = Image.open(self.random_image_path)
+        random_image_path = random.choice(image_path_list)
+        image_class = random_image_path.parent.stem
+        img = Image.open(random_image_path)
 
     def walk_through_dir(self,dir_path):
       import os
@@ -44,7 +44,7 @@ class SetData():
 
 
 
-    def trainsformData(self):
+    def transformData(self):
 
         self.data_transform=transforms.Compose([
             transforms.Resize(size=(64,64)),
@@ -71,9 +71,38 @@ class SetData():
 
         print(f'class name: {self.class_names}')
 
+        img, label = self.train_data[0][0], self.train_data[0][1]
+        print(f"Image tensor:\n{img}")
+        print(f"Image shape: {img.shape}")
+        print(f"Image datatype: {img.dtype}")
+        print(f"Image label: {label}")
+        print(f"Label datatype: {type(label)}")
+
+        #plot single img to test
+        # img_permutate=img.permute(1,2,0)
+
+        # plt.imshow(img_permutate)
+        # plt.show()
+    def intoDataLoader(self):
+        self.train_dataloader=DataLoader(dataset=self.train_data,
+                                        batch_size=1,
+                                        num_workers=1,
+                                        shuffle=True)
+
+        self.test_dataloader=DataLoader(dataset=self.test_data,
+                                        batch_size=1,
+                                        num_workers=1,
+                                        shuffle=False)
+        # no need to shuffle testing data
+
+        print(self.train_dataloader,self.test_dataloader)
+
+        img,label=next(iter(self.test_dataloader))
+        print(f"shape of img in dataloader: {img.shape}-> [batch_size, color_channels, height, width]")
 
     
 if __name__=="__main__":
     data=SetData()
     # data.ShowImg()
-    data.trainsformData()
+    data.transformData()
+    data.intoDataLoader()
