@@ -4,25 +4,76 @@ import torch.nn as nn
 import requests
 import zipfile
 from pathlib import Path
+import random
+from PIL import Image
+import numpy as np
+import matplotlib.pylab as plt
+from torch.utils.data import  DataLoader
+from torchvision import datasets, transforms
 
-# Setup path to data folder
-data_path = Path("data/")
-image_path = data_path / "pizza_steak_sushi"
+class SetData():
+    def __init__(self) -> None:
+      
+        # Setup train and testing paths
+        self.train_dir = "data\\pizza_steak_sushi\\train"
+        self.test_dir = "data\\pizza_steak_sushi\\test"
 
-# If the image folder doesn't exist, download it and prepare it... 
-if image_path.is_dir():
-    print(f"{image_path} directory exists.")
-else:
-    print(f"Did not find {image_path} directory, creating one...")
-    image_path.mkdir(parents=True, exist_ok=True)
+        random.seed(2137)
+        data_dir = Path('C:\\Users\\Jakub Machura\\source\\repos\\UnderstandingDeepLearning\\data') # Create a Path object
+        image_path_list = list(data_dir.glob("*/*/*/*.jpg"))  # Call glob on the Path object
+        print(image_path_list)        
+        self.random_image_path = random.choice(image_path_list)
+        image_class = self.random_image_path.parent.stem
+        self.img = Image.open(self.random_image_path)
+
+    def walk_through_dir(self,dir_path):
+      import os
+      """
+      Walks through dir_path returning its contents.
+      Args:
+        dir_path (str or pathlib.Path): target directory
+
+      Returns:
+        A print out of:
+          number of subdiretories in dir_path
+          number of images (files) in each subdirectory
+          name of each subdirectory
+      """
+      for dirpath, dirnames, filenames in os.walk(dir_path):
+        print(f"There are {len(dirnames)} directories and {len(filenames)} images in '{dirpath}'.")
+
+
+
+    def trainsformData(self):
+
+        self.data_transform=transforms.Compose([
+            transforms.Resize(size=(64,64)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            # Turn the image into a torch.Tensor
+            transforms.ToTensor() # this also converts all pixel values from 0 to 255 to be between 0.0 and 1.0
+        ])
+
+        self.train_data=datasets.ImageFolder(root=self.train_dir,
+                                            transform=self.data_transform,
+                                            target_transform=None
+                                             )
+        
+        self.test_data=datasets.ImageFolder(root=self.test_dir,
+                                            transform=self.data_transform,
+                                            target_transform=None)
+        
+        print(f"Train data { self.train_data}\n Test data{self.test_data}")
+        
+        # inspect data 
+        self.class_names=self.train_data.classes
+        
+        self.class_dict=self.train_data.class_to_idx
+
+        print(f'class name: {self.class_names}')
+
+
     
-    # Download pizza, steak, sushi data
-    with open(data_path / "pizza_steak_sushi.zip", "wb") as f:
-        request = requests.get("https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip")
-        print("Downloading pizza, steak, sushi data...")
-        f.write(request.content)
-
-    # Unzip pizza, steak, sushi data
-    with zipfile.ZipFile(data_path / "pizza_steak_sushi.zip", "r") as zip_ref:
-        print("Unzipping pizza, steak, sushi data...") 
-        zip_ref.extractall(image_path)
+if __name__=="__main__":
+    data=SetData()
+    # data.ShowImg()
+    data.trainsformData()
