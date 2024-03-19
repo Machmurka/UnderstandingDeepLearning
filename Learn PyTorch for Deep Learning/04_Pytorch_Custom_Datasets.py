@@ -1,6 +1,3 @@
-import torch 
-import torch.nn as nn
-
 import requests
 import zipfile
 from pathlib import Path
@@ -8,17 +5,16 @@ import random
 from PIL import Image
 import numpy as np
 import matplotlib.pylab as plt
+import os
+from typing import Tuple, Dict, List
+
+
 from torch.utils.data import  DataLoader
 from torchvision import datasets, transforms
-
-import os
-import pathlib
-import torch
-
-from PIL import Image
+import torch 
+import torch.nn as nn
 from torch.utils.data import Dataset
-from torchvision import transforms
-from typing import Tuple, Dict, List
+from torchinfo import summary
 
 class Food101Data():
     def __init__(self) -> None:
@@ -116,7 +112,7 @@ class ImageFolderCustom(Dataset):
         
         # 3. Create class attributes
         # Get all image paths
-        self.paths = list(pathlib.Path(targ_dir).glob("*/*.jpg")) # note: you'd have to update this if you've got .png's or .jpeg's
+        self.paths = list(Path(targ_dir).glob("*/*.jpg")) # note: you'd have to update this if you've got .png's or .jpeg's
         # Setup transforms
         self.transform = transform
         # Create classes and class_to_idx attributes
@@ -159,12 +155,15 @@ class ImageFolderCustom(Dataset):
 
 class CustomDataTest():
     def __init__(self) -> None:
+
+        self.train_dir = "data\\pizza_steak_sushi\\train"
+        self.test_dir = "data\\pizza_steak_sushi\\test"
         """
             temp placement for of transform
         """
         self.train_transform=transforms.Compose([
             transforms.Resize(size=(64,64)),
-            transforms.RandomHorizontalFlip(p=0.5),
+            # transforms.TrivialAugmentWide(num_magnitude_bins=10),
             transforms.ToTensor()
         ])
     
@@ -173,38 +172,138 @@ class CustomDataTest():
         transforms.ToTensor()
         ])
     
-        self.train_data_custom =ImageFolderCustom(data.train_dir,transform=self.train_transform)
-        self.test_data_custom=ImageFolderCustom(data.test_dir,transform=self.test_transforms)
+        self.train_data_custom =ImageFolderCustom(self.train_dir,transform=self.train_transform)
+        self.test_data_custom=ImageFolderCustom(self.test_dir,transform=self.test_transforms)
     
         """temp place for testing data"""    
         # Check for equality amongst our custom Dataset and ImageFolder Dataset
-        print((len(self.train_data_custom) == len(data.train_data)) & (len(self.test_data_custom) == len(data.test_data)))
-        print(self.train_data_custom.classes == data.train_data.classes)
-        print(self.train_data_custom.class_to_idx == data.train_data.class_to_idx)
+        # print((len(self.train_data_custom) == len(data.train_data)) & (len(self.test_data_custom) == len(data.test_data)))
+        # print(self.train_data_custom.classes == data.train_data.classes)
+        # print(self.train_data_custom.class_to_idx == data.train_data.class_to_idx)
 
         self.IntoDataLoaders()
 
     def IntoDataLoaders(self):
-        self.train_dataloader_custom = DataLoader(dataset=self.train_data_custom, # use custom created train Dataset
-                                     batch_size=1, # how many samples per batch?
-                                     num_workers=0, # how many subprocesses to use for data loading? (higher = more)
+        BATCH_SIZE=32
+        NUM_WORKERS = os.cpu_count()
+        print(f"number of workers avalible {NUM_WORKERS}")
+        self.train_dataloader= DataLoader(dataset=self.train_data_custom, # use custom created train Dataset
+                                     batch_size=BATCH_SIZE, # how many samples per batch?
+                                     num_workers=NUM_WORKERS, # how many subprocesses to use for data loading? (higher = more)
                                      shuffle=True) # shuffle the data?
 
-        self.test_dataloader_custom = DataLoader(dataset=self.test_data_custom, # use custom created test Dataset
-                                    batch_size=1, 
-                                    num_workers=0, 
+        self.test_dataloader = DataLoader(dataset=self.test_data_custom, # use custom created test Dataset
+                                    batch_size=BATCH_SIZE, 
+                                    num_workers=NUM_WORKERS, 
                                     shuffle=False) # don't usually need to shuffle testing data
 
         img,label=next(iter(self.test_dataloader_custom))
         print(f"shape of custome dataloader img {img.shape}")
 
+class TinnyVGG(nn.Module):
+    def __init__(self,in_shape:int,out_shape:int,hidden_units:int) -> None:
+        super().__init__()
 
+        self.conv_block1=nn.Sequential(
+            nn.Conv2d(in_channels=in_shape,
+                      out_channels=hidden_units,
+                      kernel_size=3,
+                      stride=1,
+                      padding=1),
+            nn.ReLU(),
+            nn.Conv2d(
+                in_channels=hidden_units,
+                out_channels=hidden_units,
+                kernel_size=3,
+                stride=1,
+                padding=1
+            ),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2,stride=2)
+        )
+        self.conv_block_2 = nn.Sequential(
+            nn.Conv2d(hidden_units, hidden_units, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(hidden_units, hidden_units, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2)
+        )
+        self.classifier=nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(in_features=hidden_units*16*16,out_features=out_shape)
+        )
+        print(self.state_dict)
+    def forward(self,x):
+        return(self.classifier(self.conv_block_2(self.conv_block1(x))))
+    
+    def ShapeCheck(self,data:CustomDataTest):
+        img_batch,label_batch=next(iter(data.test_dataloader))
+
+        img_single,label_single=img_batch[0].unsqueeze(dim=0), label_batch[0]
+        
+        print(f"single img shape {img_single.shape}")
+
+        self.eval()
+        with torch.inference_mode():
+            y=self(img_single)
+
+        print(f"shape of output raw y\n{y.shape}")
+        print(f"output of pred label \n{torch.argmax(torch.softmax(y,dim=1),dim=1)}")
+        print(f"actual label \n{label_single}")
+    
+    def train_step(self,loss_fn,optimizer,data):
+        self.train()
+
+        train_loss,train_acc=0,0
+
+        for batch, (X,y) in enumerate(data.train_dataloader):
+            y_logits=self(X)
+
+            loss=loss_fn(y_logits,y)
+            train_loss+=loss
+
+            optimizer.zero_grad()
+
+            loss.backward()
+
+            optimizer.step()
+
+            y_pred_class = y_logits.argmax(dim=1)
+            train_acc += (y_pred_class == y).sum().item()/len(y_logits)
+
+        train_loss/=len(data.train_dataloader)
+        train_acc/=len(data.train_dataloader)
+    
+    def test_step(self,loss_fn,optimizer,data:CustomDataTest):
+        
+        self.eval()
+
+        test_loss,test_acc=0,0
+
+        with torch.inference_mode():
+            for batch, (X,y) in enumerate(data.train_dataloader):
+                y_logits=self(X)
+
+                loss=loss_fn(y_logits,y)
+                test_loss+=loss
+            
+            test_pred_labels = y_logits.argmax(dim=1)
+            test_acc += ((test_pred_labels == y).sum().item()/len(test_pred_labels))
+        test_loss/=len(data.test_dataloader)
+        test_acc/=len(data.test_dataloader)
+
+
+                
 if __name__=="__main__":
-    data=Food101Data()
-    # data.ShowImg()
-    data.transformData()
-    data.intoDataLoader()
+    # data=Food101Data()
+    # # # data.ShowImg()
+    # data.transformData()
+    # data.intoDataLoader()
 
     data1=CustomDataTest()
-    # data1.find_classes(data.train_dir)
+    model0=TinnyVGG(3,len(data1.train_data_custom.classes),10)
+    # model0.ShapeCheck(data1)
+    summary(model0,input_size=[1,3,64,64])
+
+
     
