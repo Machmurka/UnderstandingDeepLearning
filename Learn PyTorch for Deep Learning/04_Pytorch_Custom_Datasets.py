@@ -271,7 +271,7 @@ class TinnyVGG(nn.Module):
             optimizer.step()
 
             y_pred_class = y_logits.argmax(dim=1)
-            train_acc += (y_pred_class == y).sum().item()/len(y_logits)
+            train_acc += (y_pred_class == y).sum().item()/len(y_pred_class)
 
         train_loss=train_loss/len(data.train_dataloader)
         train_acc=train_loss/len(data.train_dataloader)
@@ -289,7 +289,7 @@ class TinnyVGG(nn.Module):
 
                 loss=loss_fn(y_logits,y)
                 test_loss+=loss.item()
-                
+
                 test_pred_labels = y_logits.argmax(dim=1)
                 test_acc += ((test_pred_labels == y).sum().item()/len(test_pred_labels))
 
