@@ -289,9 +289,9 @@ class TinnyVGG(nn.Module):
 
                 loss=loss_fn(y_logits,y)
                 test_loss+=loss.item()
-            
-            test_pred_labels = y_logits.argmax(dim=1)
-            test_acc += ((test_pred_labels == y).sum().item()/len(test_pred_labels))
+                
+                test_pred_labels = y_logits.argmax(dim=1)
+                test_acc += ((test_pred_labels == y).sum().item()/len(test_pred_labels))
 
 
         test_loss=test_loss/len(data.test_dataloader)
