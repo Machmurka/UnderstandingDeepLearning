@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pylab as plt
 import os
 from typing import Tuple, Dict, List
+from tqdm.auto import tqdm
+from timeit import default_timer as timer 
 
 
 from torch.utils.data import  DataLoader
@@ -163,7 +165,7 @@ class CustomDataTest():
         """
         self.train_transform=transforms.Compose([
             transforms.Resize(size=(64,64)),
-            # transforms.TrivialAugmentWide(num_magnitude_bins=10),
+            transforms.TrivialAugmentWide(num_magnitude_bins=31),
             transforms.ToTensor()
         ])
     
@@ -197,7 +199,7 @@ class CustomDataTest():
                                     num_workers=NUM_WORKERS, 
                                     shuffle=False) # don't usually need to shuffle testing data
 
-        img,label=next(iter(self.test_dataloader_custom))
+        img,label=next(iter(self.test_dataloader))
         print(f"shape of custome dataloader img {img.shape}")
 
 class TinnyVGG(nn.Module):
@@ -254,13 +256,13 @@ class TinnyVGG(nn.Module):
     def train_step(self,loss_fn,optimizer,data):
         self.train()
 
-        train_loss,train_acc=0,0
+        train_loss,train_acc=0, 0
 
         for batch, (X,y) in enumerate(data.train_dataloader):
             y_logits=self(X)
 
             loss=loss_fn(y_logits,y)
-            train_loss+=loss
+            train_loss+=loss.item()
 
             optimizer.zero_grad()
 
@@ -271,29 +273,108 @@ class TinnyVGG(nn.Module):
             y_pred_class = y_logits.argmax(dim=1)
             train_acc += (y_pred_class == y).sum().item()/len(y_logits)
 
-        train_loss/=len(data.train_dataloader)
-        train_acc/=len(data.train_dataloader)
+        train_loss=train_loss/len(data.train_dataloader)
+        train_acc=train_loss/len(data.train_dataloader)
+        return train_loss,train_acc
     
-    def test_step(self,loss_fn,optimizer,data:CustomDataTest):
+    def test_step(self,loss_fn,data:CustomDataTest):
         
         self.eval()
 
         test_loss,test_acc=0,0
 
         with torch.inference_mode():
-            for batch, (X,y) in enumerate(data.train_dataloader):
+            for batch, (X,y) in enumerate(data.test_dataloader):
                 y_logits=self(X)
 
                 loss=loss_fn(y_logits,y)
-                test_loss+=loss
+                test_loss+=loss.item()
             
             test_pred_labels = y_logits.argmax(dim=1)
             test_acc += ((test_pred_labels == y).sum().item()/len(test_pred_labels))
-        test_loss/=len(data.test_dataloader)
-        test_acc/=len(data.test_dataloader)
 
 
-                
+        test_loss=test_loss/len(data.test_dataloader)
+        test_acc=test_acc/len(data.test_dataloader)
+        return test_loss, test_acc
+
+    def Totrain(self,data:CustomDataTest,epochs:int,optimizer,loss_fn:torch.nn.Module):
+        
+        self.results = {"train_loss": [],
+        "train_acc": [],
+        "test_loss": [],
+        "test_acc": []
+    }
+    
+
+        for epoch in tqdm(range(epochs)):
+            train_loss,train_acc=self.train_step(loss_fn,optimizer,data)
+
+            test_loss,test_acc=self.test_step(loss_fn,data)
+
+                    # 4. Print out what's happening
+            print(
+                f"Epoch: {epoch+1} | "
+                f"train_loss: {train_loss:.4f} | "
+                f"train_acc: {train_acc:.4f} | "
+                f"test_loss: {test_loss:.4f} | "
+                f"test_acc: {test_acc:.4f}"
+            )
+    
+            # 5. Update results dictionary
+            self.results["train_loss"].append(train_loss)
+            self.results["train_acc"].append(train_acc)
+            self.results["test_loss"].append(test_loss)
+            self.results["test_acc"].append(test_acc)
+        
+        return self.results
+    
+
+
+def plot_loss_curves(results: Dict[str, List[float]]):
+    """Plots training curves of a results dictionary.
+
+    Args:
+        results (dict): dictionary containing list of values, e.g.
+            {"train_loss": [...],
+             "train_acc": [...],
+             "test_loss": [...],
+             "test_acc": [...]}
+    """
+    
+    # Get the loss values of the results dictionary (training and test)
+    loss = results['train_loss']
+    test_loss = results['test_loss']
+
+    # Get the accuracy values of the results dictionary (training and test)
+    accuracy = results['train_acc']
+    test_accuracy = results['test_acc']
+
+    # Figure out how many epochs there were
+    epochs = range(len(results['train_loss']))
+
+    # Setup a plot 
+    plt.figure(figsize=(15, 7))
+
+    # Plot loss
+    plt.subplot(1, 2, 1)
+    plt.plot(epochs, loss, label='train_loss')
+    plt.plot(epochs, test_loss, label='test_loss')
+    plt.title('Loss')
+    plt.xlabel('Epochs')
+    plt.legend()
+    # plt.show()
+
+    # Plot accuracy
+    plt.subplot(1, 2, 2)
+    plt.plot(epochs, accuracy, label='train_accuracy')
+    plt.plot(epochs, test_accuracy, label='test_accuracy')
+    plt.title('Accuracy')
+    plt.xlabel('Epochs')
+    plt.legend()
+    plt.show()
+
+
 if __name__=="__main__":
     # data=Food101Data()
     # # # data.ShowImg()
@@ -303,7 +384,20 @@ if __name__=="__main__":
     data1=CustomDataTest()
     model0=TinnyVGG(3,len(data1.train_data_custom.classes),10)
     # model0.ShapeCheck(data1)
-    summary(model0,input_size=[1,3,64,64])
+    # summary(model0,input_size=[1,3,64,64])
+
+    model0_optimizer=torch.optim.Adam(params=model0.parameters(),lr=0.001)
+    model0_loss_fn=nn.CrossEntropyLoss()
+    start_time=timer()
+
+    model0_results=model0.Totrain(data=data1,epochs=5,optimizer=model0_optimizer,loss_fn=model0_loss_fn)
+    
+    end_time=timer()
+
+    print(f"Total training time: {end_time-start_time:.3f} seconds")
+
+    plot_loss_curves(model0_results)
+
 
 
     
