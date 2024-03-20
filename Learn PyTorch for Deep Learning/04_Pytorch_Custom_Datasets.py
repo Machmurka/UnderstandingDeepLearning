@@ -192,7 +192,7 @@ class CustomDataTest():
         self.train_dataloader= DataLoader(dataset=self.train_data_custom, # use custom created train Dataset
                                      batch_size=BATCH_SIZE, # how many samples per batch?
                                      num_workers=NUM_WORKERS, # how many subprocesses to use for data loading? (higher = more)
-                                     shuffle=True) # shuffle the data?
+                                     shuffle=True) 
 
         self.test_dataloader = DataLoader(dataset=self.test_data_custom, # use custom created test Dataset
                                     batch_size=BATCH_SIZE, 
@@ -390,7 +390,7 @@ if __name__=="__main__":
     model0_loss_fn=nn.CrossEntropyLoss()
     start_time=timer()
 
-    model0_results=model0.Totrain(data=data1,epochs=5,optimizer=model0_optimizer,loss_fn=model0_loss_fn)
+    model0_results=model0.Totrain(data=data1,epochs=15,optimizer=model0_optimizer,loss_fn=model0_loss_fn)
     
     end_time=timer()
 
